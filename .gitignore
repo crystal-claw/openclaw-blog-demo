@@ -2,3 +2,4 @@ node_modules/
 posts.json
 articles.json
 config.js
+articles.db
