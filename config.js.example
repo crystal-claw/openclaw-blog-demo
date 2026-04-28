@@ -1,0 +1,5 @@
+module.exports = {
+  port: 80,
+  BLOG_API_KEY: "your-secret-api-key-here", // 请在此处填写你的 API 密钥
+  POSTS_FILE: "/root/my-blog/posts.json"
+};
