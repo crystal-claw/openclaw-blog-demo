@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>2048 - 完美对齐版</title>
+    <style>
+        :root {
+            --bg-color: #faf8fd;
+            --grid-color: #bbada0;
+            --cell-color: rgba(238, 228, 238, 0.35);
+            --text-dark: #776e65;
+            --text-light: #f9f6f2;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            background: var(--bg-color);
+            font-family: "Inter", "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .game-container {
+            width: 400px;
+            max-width: 95vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 0 4px;
+        }
+        .title {
+            font-size: 60px;
+            font-weight: bold;
+            color: var(--text-dark);
+            line-height: 1;
+        }
+        .score-container {
+            background: var(--grid-color);
+            padding: 10px 20px;
+            border-radius: 6px;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            min-width: 80px;
+        }
+        .score-label {
+            display: block;
+            font-size: 13px;
+            text-transform: uppercase;
+            opacity: 0.8;
+            letter-spacing: 1px;
+        }
+        .score-value {
+            font-size: 25px;
+            line-height: 1.2;
+        }
+
+        .grid {
+            width: 100%;
+            background: var(--grid-color);
+            border-radius: 6px;
+            position: relative;
+            padding: 15px;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            cursor: default;
+            transition: height 0.2s ease;
+        }
+        .cell {
+            border-radius: 3px;
+            background: var(--cell-color);
+            position: absolute;
+            pointer-events: none;
+        }
+        .tile {
+            border-radius: 3px;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            transition: transform 0.08s ease-in-out, top 0.12s ease-in-out, left 0.12s ease-in-out;
+            z-index: 10;
+            box-sizing: border-box;
+            pointer-events: none;
+            will-change: transform, top, left;
+        }
+        .tile-merge {
+            animation: merge 0.2s ease-in-out;
+            z-index: 20;
+        }
+        @keyframes merge {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .tile-new {
+            animation: appear 0.2s ease-out;
+        }
+        @keyframes appear {
+            0% { opacity: 0; transform: scale(0); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .tile-2    { background: #eee4e6; color: #776e65; }
+        .tile-4    { background: #ede0c8; color: #776e65; }
+        .tile-8    { background: #f2b179; color: #f9f6f2; }
+        .tile-16   { background: #f59563; color: #f9f6f2; }
+        .tile-32   { background: #f67c5f; color: #f9f6f2; }
+        .tile-64   { background: #f65e3b; color: #f9f6f2; }
+        .tile-128  { background: #edcf72; color: #f9f6f2; box-shadow: 0 0 15px rgba(243,215,116,0.4); }
+        .tile-256  { background: #edcc61; color: #f9f6f2; box-shadow: 0 0 15px rgba(243,215,116,0.4); }
+        .tile-512  { background: #edc850; color: #f9f6f2; box-shadow: 0 0 15px rgba(243,215,116,0.4); }
+        .tile-1024 { background: #edc53f; color: #f9f6f2; box-shadow: 0 0 15px rgba(243,215,116,0.4); }
+        .tile-2048 { background: #edc22e; color: #f9f6f2; box-shadow: 0 0 15px rgba(243,215,116,0.5); }
+        .tile-4096 { background: #3c3a32; color: #f9f6f2; box-shadow: 0 0 20px rgba(60,58,50,0.5); }
+        .tile-8192 { background: #2b2a24; color: #f9f6f2; box-shadow: 0 0 20px rgba(43,42,36,0.5); }
+
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(238, 228, 238, 0.73);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-radius: 6px;
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+        .game-over.show {
+            display: flex;
+        }
+        .game-over h2 {
+            font-size: 40px;
+            color: #776e65;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .game-over .final-score {
+            font-size: 20px;
+            color: #776e65;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+        .game-over button {
+            background: #8f7a66;
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 18px;
+            transition: background 0.2s, transform 0.1s;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .game-over button:hover { background: #7f6a56; }
+        .game-over button:active { transform: scale(0.96); background: #6f5a46; }
+
+        @media (max-width: 440px) {
+            .game-container { width: 340px; }
+            .title { font-size: 44px; }
+            .score-container { padding: 8px 16px; min-width: 70px; }
+            .score-value { font-size: 22px; }
+        }
+        @media (max-width: 360px) {
+            .game-container { width: 300px; }
+            .title { font-size: 36px; }
+            .score-container { padding: 6px 12px; min-width: 60px; }
+            .score-value { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <div class="title">2048</div>
+            <div class="score-container">
+                <span class="score-label">SCORE</span>
+                <span id="score" class="score-value">0</span>
+            </div>
+        </div>
+        <div class="grid" id="grid">
+            <div class="game-over" id="game-over">
+                <h2>Game Over!</h2>
+                <div class="final-score" id="final-score"></div>
+                <button id="restart-btn">Try Again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Game2048 {
+            constructor() {
+                this.gridElement = document.getElementById('grid');
+                this.scoreElement = document.getElementById('score');
+                this.gameOverElement = document.getElementById('game-over');
+                this.finalScoreElement = document.getElementById('final-score');
+                this.restartButton = document.getElementById('restart-btn');
+
+                this.score = 0;
+                this.board = [];
+                this.isGameOverFlag = false;
+                
+                // 动态计算的布局参数
+                this.tileSize = 80;
+                this.padding = 15;
+                this.gap = 5;
+
+                this.boundHandleKeyDown = null;
+                this.boundMouseDown = null;
+                this.boundMouseUp = null;
+                this.boundTouchStart = null;
+                this.boundTouchEnd = null;
+                this.startX = 0;
+                this.startY = 0;
+                this.isDragging = false;
+
+                this.bindEvents();
+                this.init();
+            }
+
+            // 核心修复：根据网格实际宽度动态计算所有布局参数
+            updateResponsiveParams() {
+                const gridStyle = getComputedStyle(this.gridElement);
+                const gridWidth = this.gridElement.clientWidth;
+                const padTop = parseFloat(gridStyle.paddingTop) || 15;
+                const padRight = parseFloat(gridStyle.paddingRight) || 15;
+                const padBottom = parseFloat(gridStyle.paddingBottom) || 15;
+                const padLeft = parseFloat(gridStyle.paddingLeft) || 15;
+                
+                // 内容区域宽度
+                const contentWidth = gridWidth - padLeft - padRight;
+                // 固定间隙5px，计算方块大小
+                this.gap = 5;
+                this.tileSize = Math.floor((contentWidth - this.gap * 3) / 4);
+                // 确保最小尺寸
+                this.tileSize = Math.max(40, this.tileSize);
+                this.padding = padTop;
+                
+                // 计算网格理想高度并设置
+                const totalHeight = padTop + padBottom + 4 * this.tileSize + 3 * this.gap;
+                this.gridElement.style.height = `${totalHeight}px`;
+            }
+
+            bindEvents() {
+                // 键盘事件
+                this.boundHandleKeyDown = (e) => {
+                    if (this.isGameOverFlag) return;
+                    let moved = false;
+                    const key = e.key.toLowerCase();
+                    if (key === 'arrowup' || key === 'w') moved = this.move('up');
+                    else if (key === 'arrowdown' || key === 's') moved = this.move('down');
+                    else if (key === 'arrowleft' || key === 'a') moved = this.move('left');
+                    else if (key === 'arrowright' || key === 'd') moved = this.move('right');
+                    if (moved) this.afterMove();
+                };
+                window.addEventListener('keydown', this.boundHandleKeyDown);
+
+                // 鼠标拖拽
+                this.boundMouseDown = (e) => {
+                    if (this.isGameOverFlag) return;
+                    this.startX = e.clientX;
+                    this.startY = e.clientY;
+                    this.isDragging = true;
+                };
+                this.gridElement.addEventListener('mousedown', this.boundMouseDown);
+                this.boundMouseUp = (e) => {
+                    if (!this.isDragging) return;
+                    this.isDragging = false;
+                    if (this.isGameOverFlag) return;
+                    this.handleSwipe(e.clientX, e.clientY);
+                };
+                window.addEventListener('mouseup', this.boundMouseUp);
+
+                // 触摸滑动
+                this.boundTouchStart = (e) => {
+                    if (this.isGameOverFlag) return;
+                    const touch = e.touches[0];
+                    this.startX = touch.clientX;
+                    this.startY = touch.clientY;
+                    this.isDragging = true;
+                };
+                this.gridElement.addEventListener('touchstart', this.boundTouchStart, { passive: false });
+                this.boundTouchEnd = (e) => {
+                    if (!this.isDragging) return;
+                    this.isDragging = false;
+                    if (this.isGameOverFlag) return;
+                    const touch = e.changedTouches[0];
+                    this.handleSwipe(touch.clientX, touch.clientY);
+                };
+                window.addEventListener('touchend', this.boundTouchEnd, { passive: false });
+
+                // 重启按钮
+                this.restartButton.addEventListener('click', () => this.init());
+
+                // 窗口大小变化时重新布局，但不重置游戏
+                window.addEventListener('resize', () => {
+                    this.updateResponsiveParams();
+                    this.refreshLayout();
+                });
+            }
+
+            handleSwipe(endX, endY) {
+                const dx = endX - this.startX;
+                const dy = endY - this.startY;
+                if (Math.max(Math.abs(dx), Math.abs(dy)) < 20) return;
+                let moved = false;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    moved = dx > 0 ? this.move('right') : this.move('left');
+                } else {
+                    moved = dy > 0 ? this.move('down') : this.move('up');
+                }
+                if (moved) this.afterMove();
+            }
+
+            init() {
+                this.score = 0;
+                this.board = Array(4).fill().map(() => Array(4).fill(0));
+                this.isGameOverFlag = false;
+                this.scoreElement.innerText = '0';
+                this.gameOverElement.classList.remove('show');
+                this.finalScoreElement.innerText = '';
+                
+                this.updateResponsiveParams();
+                this.setupGrid();
+                this.addRandomTile();
+                this.addRandomTile();
+                this.render();
+            }
+
+            setupGrid() {
+                // 清除除gameOverElement外的所有子元素
+                while (this.gridElement.firstChild) {
+                    if (this.gridElement.firstChild === this.gameOverElement) {
+                        // 保留gameOverElement，移除其他
+                        const next = this.gameOverElement.nextSibling;
+                        this.gameOverElement.remove();
+                        this.gridElement.innerHTML = '';
+                        this.gridElement.appendChild(this.gameOverElement);
+                        break;
+                    }
+                    this.gridElement.firstChild.remove();
+                }
+                // 确保gameOverElement在
+                if (!this.gridElement.contains(this.gameOverElement)) {
+                    this.gridElement.appendChild(this.gameOverElement);
+                }
+
+                // 创建背景格子
+                for (let r = 0; r < 4; r++) {
+                    for (let c = 0; c < 4; c++) {
+                        const cell = document.createElement('div');
+                        cell.className = 'cell';
+                        cell.style.width = this.tileSize + 'px';
+                        cell.style.height = this.tileSize + 'px';
+                        cell.style.top = (this.padding + r * (this.tileSize + this.gap)) + 'px';
+                        cell.style.left = (this.padding + c * (this.tileSize + this.gap)) + 'px';
+                        this.gridElement.insertBefore(cell, this.gameOverElement);
+                    }
+                }
+            }
+
+            addRandomTile() {
+                const empty = [];
+                for (let r = 0; r < 4; r++)
+                    for (let c = 0; c < 4; c++)
+                        if (this.board[r][c] === 0) empty.push({r, c});
+                if (empty.length) {
+                    const {r, c} = empty[Math.floor(Math.random() * empty.length)];
+                    this.board[r][c] = Math.random() < 0.9 ? 2 : 4;
+                }
+            }
+
+            render() {
+                this.scoreElement.innerText = this.score;
+                // 移除所有tile
+                const tiles = this.gridElement.querySelectorAll('.tile');
+                tiles.forEach(t => t.remove());
+
+                for (let r = 0; r < 4; r++) {
+                    for (let c = 0; c < 4; c++) {
+                        const val = this.board[r][c];
+                        if (val !== 0) {
+                            const tile = document.createElement('div');
+                            tile.className = `tile tile-${val} tile-new`;
+                            tile.innerText = val;
+                            tile.style.width = this.tileSize + 'px';
+                            tile.style.height = this.tileSize + 'px';
+                            tile.style.top = (this.padding + r * (this.tileSize + this.gap)) + 'px';
+                            tile.style.left = (this.padding + c * (this.tileSize + this.gap)) + 'px';
+                            this.gridElement.insertBefore(tile, this.gameOverElement);
+                        }
+                    }
+                }
+            }
+
+            // 窗口大小改变时刷新现有元素位置和尺寸（不重置游戏）
+            refreshLayout() {
+                // 更新所有cell
+                const cells = this.gridElement.querySelectorAll('.cell');
+                cells.forEach((cell, index) => {
+                    const r = Math.floor(index / 4);
+                    const c = index % 4;
+                    cell.style.width = this.tileSize + 'px';
+                    cell.style.height = this.tileSize + 'px';
+                    cell.style.top = (this.padding + r * (this.tileSize + this.gap)) + 'px';
+                    cell.style.left = (this.padding + c * (this.tileSize + this.gap)) + 'px';
+                });
+                // 更新所有tile
+                const tiles = this.gridElement.querySelectorAll('.tile');
+                tiles.forEach(tile => {
+                    // 从位置推断行列？简单起见，从board重建更可靠，但直接遍历也可以
+                    // 使用data属性存储行列更优雅，但这里为了简洁，重新渲染
+                });
+                // 最稳妥：重新渲染tile
+                this.render();
+            }
+
+            afterMove() {
+                this.addRandomTile();
+                this.render();
+                if (this.isGameOver()) {
+                    this.isGameOverFlag = true;
+                    this.finalScoreElement.innerText = 'Final Score: ' + this.score;
+                    this.gameOverElement.classList.add('show');
+                }
+            }
+
+            move(dir) {
+                const rotate = (b) => {
+                    const nb = Array(4).fill().map(() => Array(4).fill(0));
+                    for (let r = 0; r < 4; r++)
+                        for (let c = 0; c < 4; c++)
+                            nb[c][3 - r] = b[r][c];
+                    return nb;
+                };
+
+                let board = this.board;
+                let rotations = 0;
+                if (dir === 'up') { board = rotate(rotate(rotate(board))); rotations = 3; }
+                else if (dir === 'right') { board = rotate(rotate(board)); rotations = 2; }
+                else if (dir === 'down') { board = rotate(board); rotations = 1; }
+                
+                let moved = false;
+                for (let r = 0; r < 4; r++) {
+                    let row = board[r].filter(v => v !== 0);
+                    for (let i = 0; i < row.length - 1; i++) {
+                        if (row[i] === row[i + 1]) {
+                            row[i] *= 2;
+                            this.score += row[i];
+                            row.splice(i + 1, 1);
+                            moved = true;
+                        }
+                    }
+                    while (row.length < 4) row.push(0);
+                    if (JSON.stringify(board[r]) !== JSON.stringify(row)) moved = true;
+                    board[r] = row;
+                }
+                
+                for (let i = 0; i < (4 - rotations) % 4; i++) board = rotate(board);
+                this.board = board;
+                return moved;
+            }
+
+            isGameOver() {
+                for (let r = 0; r < 4; r++) {
+                    for (let c = 0; c < 4; c++) {
+                        if (this.board[r][c] === 0) return false;
+                        if (c < 3 && this.board[r][c] === this.board[r][c + 1]) return false;
+                        if (r < 3 && this.board[r][c] === this.board[r + 1][c]) return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        new Game2048();
+    </script>
+</body>
+</html>
