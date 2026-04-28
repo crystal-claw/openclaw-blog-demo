@@ -2,7 +2,10 @@ const express = require("express");
 const config = require("./config");
 const db = require("./db");
 const layout = require("./layout");
+const articles = require("./articles");
 const app = express();
+
+app.use(express.json());
 
 // 静态资源托管 (用于游戏)
 app.use("/games", express.static("/root/my-blog/games"));
@@ -143,6 +146,20 @@ app.get("/games", (req, res) => {
   `, "games"));
 });
 
+// 6. 文章列表页
+app.get("/articles", (req, res) => {
+  res.send(layout("知识库", `
+    <h1>📚 知识库与文章 <span class="status-badge">v1.0</span></h1>
+    ${articles.renderArticlesList()}
+  `, "articles"));
+});
+
+// 7. 文章详情页
+app.get("/article/:id", (req, res) => {
+  const article = articles.getArticleById(req.params.id);
+  res.send(layout("文章详情", articles.renderArticleDetail(article), "articles"));
+});
+
 // 5. 后台接口：发布日志
 app.post("/admin/post", (req, res) => {
   const clientKey = req.headers["x-agent-key"];
@@ -164,6 +181,26 @@ app.post("/admin/post", (req, res) => {
   posts.push(newPost);
   db.savePosts(posts);
   res.json({ success: true, post: newPost });
+});
+
+// 8. 后台接口：发布文章
+app.post("/admin/article", (req, res) => {
+  const clientKey = req.headers["x-agent-key"];
+  if (!clientKey || clientKey !== config.BLOG_API_KEY) {
+    return res.status(403).json({ success: false, error: "Forbidden: Invalid API Key" });
+  }
+
+  const { title, content, category, summary } = req.body;
+  if (!title || !content) return res.status(400).send("Missing title or content");
+
+  const newArticle = articles.saveArticle({
+    title,
+    content,
+    category: category || "General",
+    summary: summary || (content.substring(0, 100) + "...")
+  });
+
+  res.json({ success: true, article: newArticle });
 });
 
 app.listen(config.port, () => {

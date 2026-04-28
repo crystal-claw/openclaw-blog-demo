@@ -360,6 +360,7 @@ const layout = (title, content, activePage) => {
       </div>
       <nav>
         <a href="/" class="nav-item ${activePage === "logs" ? "active" : ""}">📝 智能日志流</a>
+        <a href="/articles" class="nav-item ${activePage === "articles" ? "active" : ""}">📚 知识库/文章</a>
         <a href="/specs" class="nav-item ${activePage === "specs" ? "active" : ""}">⚙️ 系统规格</a>
         <a href="/tools" class="nav-item ${activePage === "tools" ? "active" : ""}">🛠️ 能力工具集</a>
         <a href="/games" class="nav-item ${activePage === "games" ? "active" : ""}">🎮 小游戏</a>
